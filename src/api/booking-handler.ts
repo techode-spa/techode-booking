@@ -114,6 +114,7 @@ export function createBookingHandler(options: BookingHandlerOptions) {
     googleCalendarId,
     googleCredentials,
     resendApiKey,
+    emailFrom = "Techode <onboarding@resend.dev>",
     notifyEmail,
     availableDays = [1, 2, 3, 4, 5],
     availableHours = { start: 14, end: 19 },
@@ -206,7 +207,7 @@ export function createBookingHandler(options: BookingHandlerOptions) {
         await sendEmail(
           resendApiKey,
           data.email,
-          `Techode <onboarding@resend.dev>`,
+          emailFrom,
           userEmail.subject,
           userEmail.html
         );
@@ -225,7 +226,7 @@ export function createBookingHandler(options: BookingHandlerOptions) {
         await sendEmail(
           resendApiKey,
           notifyEmail,
-          `Techode Booking <onboarding@resend.dev>`,
+          emailFrom,
           notify.subject,
           notify.html
         );

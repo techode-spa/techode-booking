@@ -5,6 +5,8 @@ interface BookingHandlerOptions {
     googleCredentials?: string;
     /** Resend API key for confirmation emails */
     resendApiKey: string;
+    /** Sender address for emails (default: "Techode <onboarding@resend.dev>") */
+    emailFrom?: string;
     /** Email to notify on new bookings */
     notifyEmail: string;
     /** Available days: 0=Sun, 1=Mon, ..., 6=Sat (default: [1,2,3,4,5]) */
