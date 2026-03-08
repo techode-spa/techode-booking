@@ -45,7 +45,10 @@ export default function BookingForm({
   customTexts,
 }: BookingFormProps) {
   const isDark = theme === "dark";
-  const t = { ...labels[locale], ...customTexts };
+  const filtered = Object.fromEntries(
+    Object.entries(customTexts ?? {}).filter(([, v]) => v !== undefined)
+  );
+  const t = { ...labels[locale], ...filtered };
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

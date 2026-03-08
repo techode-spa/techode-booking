@@ -235,7 +235,10 @@ function BookingForm({
   customTexts
 }) {
   const isDark = theme === "dark";
-  const t = { ...labels[locale], ...customTexts };
+  const filtered = Object.fromEntries(
+    Object.entries(customTexts ?? {}).filter(([, v]) => v !== void 0)
+  );
+  const t = { ...labels[locale], ...filtered };
   const [name, setName] = (0, import_react2.useState)("");
   const [email, setEmail] = (0, import_react2.useState)("");
   const [service, setService] = (0, import_react2.useState)("");
