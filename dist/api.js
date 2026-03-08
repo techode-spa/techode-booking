@@ -167,20 +167,21 @@ function formatDate(date, time) {
 function buildUserEmail(data) {
   const dateFormatted = formatDate(data.date, data.time);
   return {
-    subject: `Reunion confirmada \u2014 Techode | ${data.date} ${data.time}`,
+    subject: `Solicitud de reunion recibida \u2014 Techode | ${data.date} ${data.time}`,
     html: `
       <div style="font-family: Inter, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #080812; color: #ffffff; padding: 32px; border-radius: 12px;">
         <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="color: #2DBFAD; font-size: 20px; margin: 0;">Reunion confirmada</h1>
+          <h1 style="color: #2DBFAD; font-size: 20px; margin: 0;">Solicitud de reunion recibida</h1>
         </div>
         <p>Hola <strong>${escapeHtml(data.name)}</strong>,</p>
-        <p>Tu reunion con Techode ha sido agendada:</p>
+        <p>Hemos recibido tu solicitud de reunion con Techode. Nuestro equipo la revisara y te confirmaremos la cita a la brevedad.</p>
+        <p style="font-weight: 500;">Detalles de tu solicitud:</p>
         <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-          <tr><td style="padding: 8px 0; color: #8888AA;">Fecha y hora</td><td style="padding: 8px 0;">${escapeHtml(dateFormatted)}</td></tr>
+          <tr><td style="padding: 8px 0; color: #8888AA;">Fecha y hora solicitada</td><td style="padding: 8px 0;">${escapeHtml(dateFormatted)}</td></tr>
           <tr><td style="padding: 8px 0; color: #8888AA;">Duracion</td><td style="padding: 8px 0;">${data.duration} minutos</td></tr>
           <tr><td style="padding: 8px 0; color: #8888AA;">Servicio</td><td style="padding: 8px 0;">${escapeHtml(data.service)}</td></tr>
         </table>
-        <p style="color: #8888AA; font-size: 14px;">Si necesitas cancelar o reagendar, responde a este correo.</p>
+        <p style="color: #8888AA; font-size: 14px;">Si necesitas modificar o cancelar tu solicitud, responde a este correo.</p>
         <hr style="border: none; border-top: 1px solid #1a1a2e; margin: 24px 0;" />
         <p style="color: #8888AA; font-size: 12px; text-align: center;">Techode \u2014 techode.dev</p>
       </div>
@@ -190,12 +191,13 @@ function buildUserEmail(data) {
 function buildNotifyEmail(data) {
   const dateFormatted = formatDate(data.date, data.time);
   return {
-    subject: `Nueva reunion agendada \u2014 ${escapeHtml(data.name)} | ${data.date} ${data.time}`,
+    subject: `Nueva solicitud de reunion \u2014 ${escapeHtml(data.name)} | ${data.date} ${data.time}`,
     html: `
       <div style="font-family: Inter, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #080812; color: #ffffff; padding: 32px; border-radius: 12px;">
         <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="color: #2DBFAD; font-size: 20px; margin: 0;">Nueva reunion agendada</h1>
+          <h1 style="color: #2DBFAD; font-size: 20px; margin: 0;">Nueva solicitud de reunion</h1>
         </div>
+        <p style="color: #ff9900; font-size: 13px; margin-bottom: 16px;">Pendiente de confirmacion \u2014 responde al cliente para confirmar la cita.</p>
         <table style="width: 100%; border-collapse: collapse;">
           <tr><td style="padding: 8px 0; color: #8888AA;">Nombre</td><td style="padding: 8px 0;">${escapeHtml(data.name)}</td></tr>
           <tr><td style="padding: 8px 0; color: #8888AA;">Email</td><td style="padding: 8px 0;">${escapeHtml(data.email)}</td></tr>
