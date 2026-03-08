@@ -1,6 +1,6 @@
 {
   "name": "@techode/booking",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Embeddable booking widget for React/Next.js projects. Powered by Google Calendar.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
