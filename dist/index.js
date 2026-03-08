@@ -229,11 +229,13 @@ function BookingForm({
   onSubmit,
   loading,
   accentColor,
+  secondaryColor,
   theme,
-  locale
+  locale,
+  customTexts
 }) {
   const isDark = theme === "dark";
-  const t = labels[locale];
+  const t = { ...labels[locale], ...customTexts };
   const [name, setName] = (0, import_react2.useState)("");
   const [email, setEmail] = (0, import_react2.useState)("");
   const [service, setService] = (0, import_react2.useState)("");
@@ -346,7 +348,7 @@ function BookingForm({
           padding: "12px 24px",
           borderRadius: 8,
           border: "none",
-          background: loading ? isDark ? "#333" : "#ccc" : `linear-gradient(135deg, ${accentColor}, #4A5EC8)`,
+          background: loading ? isDark ? "#333" : "#ccc" : `linear-gradient(135deg, ${accentColor}, ${secondaryColor})`,
           color: "#fff",
           fontSize: 15,
           fontWeight: 600,
@@ -423,13 +425,15 @@ function BookingWidget({
   apiUrl,
   theme = "dark",
   accentColor = "#2DBFAD",
+  secondaryColor = "#4A5EC8",
   locale = "es",
   durationLabel = "60 min",
   services,
-  buttonText
+  buttonText,
+  texts: customTexts
 }) {
   const isDark = theme === "dark";
-  const t = texts[locale];
+  const t = { ...texts[locale], ...customTexts };
   const serviceOptions = services || (locale === "es" ? DEFAULT_SERVICES_ES : DEFAULT_SERVICES_EN);
   const [isOpen, setIsOpen] = (0, import_react3.useState)(false);
   const [isClosing, setIsClosing] = (0, import_react3.useState)(false);
@@ -726,8 +730,19 @@ function BookingWidget({
                     onSubmit: handleBook,
                     loading: loadingBooking,
                     accentColor,
+                    secondaryColor,
                     theme,
-                    locale
+                    locale,
+                    customTexts: {
+                      name: t.formName,
+                      email: t.formEmail,
+                      service: t.formService,
+                      message: t.formMessage,
+                      messagePlaceholder: t.formMessagePlaceholder,
+                      selectService: t.formSelectService,
+                      submit: t.formSubmit,
+                      submitting: t.formSubmitting
+                    }
                   }
                 )
               ] }),

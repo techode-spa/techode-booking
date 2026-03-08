@@ -72,13 +72,15 @@ export default function BookingWidget({
   apiUrl,
   theme = "dark",
   accentColor = "#2DBFAD",
+  secondaryColor = "#4A5EC8",
   locale = "es",
   durationLabel = "60 min",
   services,
   buttonText,
+  texts: customTexts,
 }: BookingWidgetProps) {
   const isDark = theme === "dark";
-  const t = texts[locale];
+  const t = { ...texts[locale], ...customTexts };
   const serviceOptions = services || (locale === "es" ? DEFAULT_SERVICES_ES : DEFAULT_SERVICES_EN);
 
   const [isOpen, setIsOpen] = useState(false);
@@ -408,8 +410,19 @@ export default function BookingWidget({
                   onSubmit={handleBook}
                   loading={loadingBooking}
                   accentColor={accentColor}
+                  secondaryColor={secondaryColor}
                   theme={theme}
                   locale={locale}
+                  customTexts={{
+                    name: t.formName,
+                    email: t.formEmail,
+                    service: t.formService,
+                    message: t.formMessage,
+                    messagePlaceholder: t.formMessagePlaceholder,
+                    selectService: t.formSelectService,
+                    submit: t.formSubmit,
+                    submitting: t.formSubmitting,
+                  }}
                 />
               </>
             )}

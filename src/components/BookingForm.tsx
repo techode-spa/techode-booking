@@ -5,8 +5,10 @@ interface BookingFormProps {
   onSubmit: (data: { name: string; email: string; service: string; message: string }) => void;
   loading: boolean;
   accentColor: string;
+  secondaryColor: string;
   theme: "dark" | "light";
   locale: "es" | "en";
+  customTexts?: Partial<typeof labels["es"]>;
 }
 
 const labels = {
@@ -37,11 +39,13 @@ export default function BookingForm({
   onSubmit,
   loading,
   accentColor,
+  secondaryColor,
   theme,
   locale,
+  customTexts,
 }: BookingFormProps) {
   const isDark = theme === "dark";
-  const t = labels[locale];
+  const t = { ...labels[locale], ...customTexts };
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -142,7 +146,7 @@ export default function BookingForm({
           padding: "12px 24px",
           borderRadius: 8,
           border: "none",
-          background: loading ? (isDark ? "#333" : "#ccc") : `linear-gradient(135deg, ${accentColor}, #4A5EC8)`,
+          background: loading ? (isDark ? "#333" : "#ccc") : `linear-gradient(135deg, ${accentColor}, ${secondaryColor})`,
           color: "#fff",
           fontSize: 15,
           fontWeight: 600,

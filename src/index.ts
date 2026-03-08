@@ -1,2 +1,2 @@
 export { default as BookingWidget } from "./components/BookingWidget";
-export type { BookingWidgetProps, BookingFormData } from "./types";
+export type { BookingWidgetProps, BookingWidgetTexts, BookingFormData } from "./types";
