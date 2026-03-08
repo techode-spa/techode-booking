@@ -29,7 +29,7 @@ interface BookingResponse {
 }
 
 declare function createBookingHandler(options: BookingHandlerOptions): (req: {
-    action: "availability" | "book";
+    action: string;
     body: Record<string, unknown>;
     ip: string;
 }) => Promise<BookingResponse>;

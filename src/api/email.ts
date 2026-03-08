@@ -14,7 +14,8 @@ function formatDate(date: string, time: string): string {
     "05": "mayo", "06": "junio", "07": "julio", "08": "agosto",
     "09": "septiembre", "10": "octubre", "11": "noviembre", "12": "diciembre",
   };
-  return `${parseInt(day)} de ${months[month]} de ${year}, ${time} hrs (Chile)`;
+  const monthName = months[month] || month;
+  return `${parseInt(day)} de ${monthName} de ${year}, ${time} hrs (Chile)`;
 }
 
 export function buildUserEmail(data: {

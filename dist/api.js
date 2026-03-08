@@ -162,7 +162,8 @@ function formatDate(date, time) {
     "11": "noviembre",
     "12": "diciembre"
   };
-  return `${parseInt(day)} de ${months[month]} de ${year}, ${time} hrs (Chile)`;
+  const monthName = months[month] || month;
+  return `${parseInt(day)} de ${monthName} de ${year}, ${time} hrs (Chile)`;
 }
 function buildUserEmail(data) {
   const dateFormatted = formatDate(data.date, data.time);
@@ -250,6 +251,12 @@ function validate(body) {
   if (trimMessage.length > 500) return "Mensaje muy largo";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trimDate)) return "Fecha invalida";
   if (!/^\d{2}:\d{2}$/.test(trimTime)) return "Hora invalida";
+  const dateObj = /* @__PURE__ */ new Date(trimDate + "T00:00:00");
+  if (isNaN(dateObj.getTime())) return "Fecha invalida";
+  const [hourStr, minuteStr] = trimTime.split(":");
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "Hora invalida";
   return {
     name: trimName,
     email: trimEmail,
@@ -258,6 +265,17 @@ function validate(body) {
     date: trimDate,
     time: trimTime
   };
+}
+function validateBookingSlot(date, time, availableDays, availableHours) {
+  const dateObj = /* @__PURE__ */ new Date(date + "T00:00:00");
+  const dayOfWeek = dateObj.getDay();
+  const hour = parseInt(time.split(":")[0], 10);
+  if (!availableDays.includes(dayOfWeek)) return "Dia no disponible";
+  if (hour < availableHours.start || hour >= availableHours.end) return "Hora fuera de horario";
+  const now = /* @__PURE__ */ new Date();
+  const slotDate = /* @__PURE__ */ new Date(date + "T" + time + ":00");
+  if (slotDate <= now) return "Horario ya pasado";
+  return null;
 }
 function getLocalAvailability(month, year, availableDays, availableHours) {
   const now = /* @__PURE__ */ new Date();
@@ -304,11 +322,14 @@ function createBookingHandler(options) {
     bufferMinutes
   } : null;
   return async (req) => {
+    if (req.action !== "availability" && req.action !== "book") {
+      return { status: 400, body: { error: "Accion invalida" } };
+    }
     if (req.action === "availability") {
       const { month, year } = req.body;
       const now = /* @__PURE__ */ new Date();
-      const m = typeof month === "number" ? month : now.getMonth();
-      const y = typeof year === "number" ? year : now.getFullYear();
+      const m = typeof month === "number" && month >= 0 && month <= 11 ? month : now.getMonth();
+      const y = typeof year === "number" && year >= now.getFullYear() && year <= now.getFullYear() + 1 ? year : now.getFullYear();
       try {
         const availability = useGoogleCalendar && calendarConfig ? await getAvailability(calendarConfig, m, y) : getLocalAvailability(m, y, availableDays, availableHours);
         return { status: 200, body: { availability } };
@@ -326,6 +347,10 @@ function createBookingHandler(options) {
         return { status: 400, body: { error: result } };
       }
       const data = result;
+      const slotError = validateBookingSlot(data.date, data.time, availableDays, availableHours);
+      if (slotError) {
+        return { status: 400, body: { error: slotError } };
+      }
       try {
         if (useGoogleCalendar && calendarConfig) {
           await createEvent(calendarConfig, data.date, data.time, {

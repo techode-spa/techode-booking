@@ -32,6 +32,16 @@ function validate(body: Record<string, unknown>): BookingFormData | string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trimDate)) return "Fecha invalida";
   if (!/^\d{2}:\d{2}$/.test(trimTime)) return "Hora invalida";
 
+  // Validate date is a real date
+  const dateObj = new Date(trimDate + "T00:00:00");
+  if (isNaN(dateObj.getTime())) return "Fecha invalida";
+
+  // Validate time components
+  const [hourStr, minuteStr] = trimTime.split(":");
+  const hour = parseInt(hourStr, 10);
+  const minute = parseInt(minuteStr, 10);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "Hora invalida";
+
   return {
     name: trimName,
     email: trimEmail,
@@ -40,6 +50,30 @@ function validate(body: Record<string, unknown>): BookingFormData | string {
     date: trimDate,
     time: trimTime,
   };
+}
+
+function validateBookingSlot(
+  date: string,
+  time: string,
+  availableDays: number[],
+  availableHours: { start: number; end: number }
+): string | null {
+  const dateObj = new Date(date + "T00:00:00");
+  const dayOfWeek = dateObj.getDay();
+  const hour = parseInt(time.split(":")[0], 10);
+
+  // Check day is available
+  if (!availableDays.includes(dayOfWeek)) return "Dia no disponible";
+
+  // Check hour is within range
+  if (hour < availableHours.start || hour >= availableHours.end) return "Hora fuera de horario";
+
+  // Check date is not in the past
+  const now = new Date();
+  const slotDate = new Date(date + "T" + time + ":00");
+  if (slotDate <= now) return "Horario ya pasado";
+
+  return null;
 }
 
 /** Generate availability locally without Google Calendar */
@@ -104,16 +138,21 @@ export function createBookingHandler(options: BookingHandlerOptions) {
     : null;
 
   return async (req: {
-    action: "availability" | "book";
+    action: string;
     body: Record<string, unknown>;
     ip: string;
   }): Promise<BookingResponse> => {
+    // Validate action
+    if (req.action !== "availability" && req.action !== "book") {
+      return { status: 400, body: { error: "Accion invalida" } };
+    }
+
     // --- GET AVAILABILITY ---
     if (req.action === "availability") {
-      const { month, year } = req.body as { month?: number; year?: number };
+      const { month, year } = req.body as { month?: unknown; year?: unknown };
       const now = new Date();
-      const m = typeof month === "number" ? month : now.getMonth();
-      const y = typeof year === "number" ? year : now.getFullYear();
+      const m = typeof month === "number" && month >= 0 && month <= 11 ? month : now.getMonth();
+      const y = typeof year === "number" && year >= now.getFullYear() && year <= now.getFullYear() + 1 ? year : now.getFullYear();
 
       try {
         const availability = useGoogleCalendar && calendarConfig
@@ -138,6 +177,12 @@ export function createBookingHandler(options: BookingHandlerOptions) {
       }
 
       const data = result;
+
+      // Validate slot is within allowed days/hours
+      const slotError = validateBookingSlot(data.date, data.time, availableDays, availableHours);
+      if (slotError) {
+        return { status: 400, body: { error: slotError } };
+      }
 
       try {
         // Create Google Calendar event (if configured)
