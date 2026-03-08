@@ -17,8 +17,8 @@ const labels = {
     message: "Mensaje (opcional)",
     messagePlaceholder: "Cuentanos brevemente sobre tu proyecto, empresa o presupuesto estimado",
     selectService: "Selecciona un servicio",
-    submit: "Confirmar reunion",
-    submitting: "Agendando...",
+    submit: "Enviar solicitud",
+    submitting: "Enviando...",
   },
   en: {
     name: "Name",
@@ -27,8 +27,8 @@ const labels = {
     message: "Message (optional)",
     messagePlaceholder: "Tell us briefly about your project, company or estimated budget",
     selectService: "Select a service",
-    submit: "Confirm meeting",
-    submitting: "Booking...",
+    submit: "Send request",
+    submitting: "Sending...",
   },
 };
 
@@ -106,7 +106,15 @@ export default function BookingForm({
           value={service}
           onChange={(e) => setService(e.target.value)}
           required
-          style={{ ...inputStyle, cursor: "pointer" }}
+          style={{
+            ...inputStyle,
+            cursor: "pointer",
+            appearance: "none",
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238888AA' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 12px center",
+            paddingRight: 32,
+          }}
         >
           <option value="">{t.selectService}</option>
           {services.map((s) => (

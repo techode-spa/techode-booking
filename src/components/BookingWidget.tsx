@@ -6,6 +6,17 @@ import BookingForm from "./BookingForm";
 
 type Step = "calendar" | "form" | "success" | "error";
 
+function formatReadableDate(dateStr: string, locale: "es" | "en"): string {
+  const [year, month, day] = dateStr.split("-");
+  const monthsEs = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const months = locale === "es" ? monthsEs : monthsEn;
+  const idx = parseInt(month, 10) - 1;
+  const monthName = months[idx] || month;
+  if (locale === "es") return `${parseInt(day)} de ${monthName} de ${year}`;
+  return `${monthName} ${parseInt(day)}, ${year}`;
+}
+
 const DEFAULT_SERVICES_ES = ["Desarrollo Web", "Aplicacion Movil", "Diseno UI/UX", "Consultoria", "Otro"];
 const DEFAULT_SERVICES_EN = ["Web Development", "Mobile App", "UI/UX Design", "Consulting", "Other"];
 
@@ -15,7 +26,7 @@ const texts = {
     title: "Agendar una llamada",
     selectTime: "Selecciona un horario",
     duration: "Duracion",
-    loading: "Cargando disponibilidad...",
+    loading: "Cargando disponibilidad",
     noSlots: "No hay horarios disponibles este mes. Prueba el siguiente.",
     successTitle: "Solicitud enviada",
     successMsg: "Recibimos tu solicitud. Te confirmaremos la reunion por correo a la brevedad.",
@@ -29,7 +40,7 @@ const texts = {
     title: "Book a call",
     selectTime: "Select a time",
     duration: "Duration",
-    loading: "Loading availability...",
+    loading: "Loading availability",
     noSlots: "No slots available this month. Try the next one.",
     successTitle: "Request sent",
     successMsg: "We received your request. We'll confirm the meeting by email shortly.",
@@ -39,6 +50,23 @@ const texts = {
     newBooking: "Book another",
   },
 };
+
+function Spinner({ color }: { color: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 0", gap: 12 }}>
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          border: `3px solid ${color}30`,
+          borderTopColor: color,
+          borderRadius: "50%",
+          animation: "techode-booking-spin 0.7s linear infinite",
+        }}
+      />
+    </div>
+  );
+}
 
 export default function BookingWidget({
   apiUrl,
@@ -54,15 +82,15 @@ export default function BookingWidget({
   const serviceOptions = services || (locale === "es" ? DEFAULT_SERVICES_ES : DEFAULT_SERVICES_EN);
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [step, setStep] = useState<Step>("calendar");
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [loadingBooking, setLoadingBooking] = useState(false);
   const [availability, setAvailability] = useState<DayAvailability[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const now = new Date();
-  const [month, setMonth] = useState(now.getMonth());
-  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(() => new Date().getMonth());
+  const [year, setYear] = useState(() => new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
@@ -93,15 +121,35 @@ export default function BookingWidget({
     }
   }, [apiUrl]);
 
+  // #7 — Refresh month/year on open so `now` is always fresh
   useEffect(() => {
     if (isOpen) {
-      fetchAvailability(month, year);
+      const now = new Date();
+      setMonth(now.getMonth());
+      setYear(now.getFullYear());
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
     }
     return () => { document.body.style.overflow = ""; };
+  }, [isOpen]);
+
+  // Fetch availability when month/year change (only when open)
+  useEffect(() => {
+    if (isOpen) {
+      fetchAvailability(month, year);
+    }
   }, [isOpen, month, year, fetchAvailability]);
+
+  // #1 — Close modal with Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") handleClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
 
   function handleChangeMonth(m: number, y: number) {
     setMonth(m);
@@ -141,7 +189,6 @@ export default function BookingWidget({
       } else {
         setErrorMsg(data.error || "Error al agendar");
         if (res.status === 409) {
-          // Slot taken — go back to calendar
           setStep("calendar");
           setSelectedTime(null);
           fetchAvailability(month, year);
@@ -157,15 +204,17 @@ export default function BookingWidget({
     }
   }
 
+  // #4 — Close with fade-out animation
   function handleClose() {
-    setIsOpen(false);
-    // Reset state after animation
+    setIsClosing(true);
     setTimeout(() => {
+      setIsOpen(false);
+      setIsClosing(false);
       setStep("calendar");
       setSelectedDate(null);
       setSelectedTime(null);
       setErrorMsg("");
-    }, 300);
+    }, 200);
   }
 
   function handleReset() {
@@ -217,7 +266,9 @@ export default function BookingWidget({
             justifyContent: "center",
             zIndex: 9999,
             padding: 16,
-            animation: "techode-booking-fade-in 0.2s ease",
+            animation: isClosing
+              ? "techode-booking-fade-out 0.2s ease forwards"
+              : "techode-booking-fade-in 0.2s ease",
           }}
         >
           {/* Modal */}
@@ -233,7 +284,9 @@ export default function BookingWidget({
               border: `1px solid ${isDark ? "#1a1a2e" : "#e0e0e0"}`,
               padding: 24,
               fontFamily: "Inter, system-ui, sans-serif",
-              animation: "techode-booking-slide-up 0.3s ease",
+              animation: isClosing
+                ? "techode-booking-slide-down 0.2s ease forwards"
+                : "techode-booking-slide-up 0.3s ease",
             }}
           >
             {/* Header */}
@@ -275,9 +328,11 @@ export default function BookingWidget({
             {/* Step: Calendar */}
             {step === "calendar" && (
               <>
+                {/* #6 — Loading spinner */}
                 {loadingAvailability ? (
-                  <div style={{ textAlign: "center", padding: "40px 0", color: isDark ? "#8888AA" : "#999" }}>
-                    {t.loading}
+                  <div style={{ textAlign: "center" }}>
+                    <Spinner color={accentColor} />
+                    <p style={{ color: isDark ? "#8888AA" : "#999", fontSize: 14, margin: 0 }}>{t.loading}</p>
                   </div>
                 ) : availability.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "40px 0", color: isDark ? "#8888AA" : "#999" }}>
@@ -332,6 +387,7 @@ export default function BookingWidget({
                 >
                   ← {t.back}
                 </button>
+                {/* #2 — Readable date */}
                 <div style={{
                   padding: "8px 12px",
                   borderRadius: 8,
@@ -340,7 +396,7 @@ export default function BookingWidget({
                   fontSize: 14,
                   marginBottom: 8,
                 }}>
-                  {selectedDate} — {selectedTime}
+                  {selectedDate ? formatReadableDate(selectedDate, locale) : selectedDate} — {selectedTime} hrs
                 </div>
                 {errorMsg && (
                   <div style={{ padding: "8px 12px", borderRadius: 8, background: "#ff444420", color: "#ff6666", fontSize: 13, marginBottom: 8 }}>
@@ -436,9 +492,20 @@ export default function BookingWidget({
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes techode-booking-fade-out {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
         @keyframes techode-booking-slide-up {
           from { opacity: 0; transform: translateY(20px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes techode-booking-slide-down {
+          from { opacity: 1; transform: translateY(0) scale(1); }
+          to { opacity: 0; transform: translateY(20px) scale(0.98); }
+        }
+        @keyframes techode-booking-spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </>

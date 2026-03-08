@@ -210,8 +210,8 @@ var labels = {
     message: "Mensaje (opcional)",
     messagePlaceholder: "Cuentanos brevemente sobre tu proyecto, empresa o presupuesto estimado",
     selectService: "Selecciona un servicio",
-    submit: "Confirmar reunion",
-    submitting: "Agendando..."
+    submit: "Enviar solicitud",
+    submitting: "Enviando..."
   },
   en: {
     name: "Name",
@@ -220,8 +220,8 @@ var labels = {
     message: "Message (optional)",
     messagePlaceholder: "Tell us briefly about your project, company or estimated budget",
     selectService: "Select a service",
-    submit: "Confirm meeting",
-    submitting: "Booking..."
+    submit: "Send request",
+    submitting: "Sending..."
   }
 };
 function BookingForm({
@@ -307,7 +307,15 @@ function BookingForm({
           value: service,
           onChange: (e) => setService(e.target.value),
           required: true,
-          style: { ...inputStyle, cursor: "pointer" },
+          style: {
+            ...inputStyle,
+            cursor: "pointer",
+            appearance: "none",
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238888AA' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 12px center",
+            paddingRight: 32
+          },
           children: [
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "", children: t.selectService }),
             services.map((s) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: s, children: s }, s))
@@ -354,6 +362,16 @@ function BookingForm({
 
 // src/components/BookingWidget.tsx
 var import_jsx_runtime4 = require("react/jsx-runtime");
+function formatReadableDate(dateStr, locale) {
+  const [year, month, day] = dateStr.split("-");
+  const monthsEs = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const months = locale === "es" ? monthsEs : monthsEn;
+  const idx = parseInt(month, 10) - 1;
+  const monthName = months[idx] || month;
+  if (locale === "es") return `${parseInt(day)} de ${monthName} de ${year}`;
+  return `${monthName} ${parseInt(day)}, ${year}`;
+}
 var DEFAULT_SERVICES_ES = ["Desarrollo Web", "Aplicacion Movil", "Diseno UI/UX", "Consultoria", "Otro"];
 var DEFAULT_SERVICES_EN = ["Web Development", "Mobile App", "UI/UX Design", "Consulting", "Other"];
 var texts = {
@@ -362,7 +380,7 @@ var texts = {
     title: "Agendar una llamada",
     selectTime: "Selecciona un horario",
     duration: "Duracion",
-    loading: "Cargando disponibilidad...",
+    loading: "Cargando disponibilidad",
     noSlots: "No hay horarios disponibles este mes. Prueba el siguiente.",
     successTitle: "Solicitud enviada",
     successMsg: "Recibimos tu solicitud. Te confirmaremos la reunion por correo a la brevedad.",
@@ -376,7 +394,7 @@ var texts = {
     title: "Book a call",
     selectTime: "Select a time",
     duration: "Duration",
-    loading: "Loading availability...",
+    loading: "Loading availability",
     noSlots: "No slots available this month. Try the next one.",
     successTitle: "Request sent",
     successMsg: "We received your request. We'll confirm the meeting by email shortly.",
@@ -386,6 +404,21 @@ var texts = {
     newBooking: "Book another"
   }
 };
+function Spinner({ color }) {
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 0", gap: 12 }, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+    "div",
+    {
+      style: {
+        width: 28,
+        height: 28,
+        border: `3px solid ${color}30`,
+        borderTopColor: color,
+        borderRadius: "50%",
+        animation: "techode-booking-spin 0.7s linear infinite"
+      }
+    }
+  ) });
+}
 function BookingWidget({
   apiUrl,
   theme = "dark",
@@ -399,14 +432,14 @@ function BookingWidget({
   const t = texts[locale];
   const serviceOptions = services || (locale === "es" ? DEFAULT_SERVICES_ES : DEFAULT_SERVICES_EN);
   const [isOpen, setIsOpen] = (0, import_react3.useState)(false);
+  const [isClosing, setIsClosing] = (0, import_react3.useState)(false);
   const [step, setStep] = (0, import_react3.useState)("calendar");
   const [loadingAvailability, setLoadingAvailability] = (0, import_react3.useState)(false);
   const [loadingBooking, setLoadingBooking] = (0, import_react3.useState)(false);
   const [availability, setAvailability] = (0, import_react3.useState)([]);
   const [errorMsg, setErrorMsg] = (0, import_react3.useState)("");
-  const now = /* @__PURE__ */ new Date();
-  const [month, setMonth] = (0, import_react3.useState)(now.getMonth());
-  const [year, setYear] = (0, import_react3.useState)(now.getFullYear());
+  const [month, setMonth] = (0, import_react3.useState)(() => (/* @__PURE__ */ new Date()).getMonth());
+  const [year, setYear] = (0, import_react3.useState)(() => (/* @__PURE__ */ new Date()).getFullYear());
   const [selectedDate, setSelectedDate] = (0, import_react3.useState)(null);
   const [selectedTime, setSelectedTime] = (0, import_react3.useState)(null);
   const selectedSlots = (0, import_react3.useMemo)(() => {
@@ -436,7 +469,9 @@ function BookingWidget({
   }, [apiUrl]);
   (0, import_react3.useEffect)(() => {
     if (isOpen) {
-      fetchAvailability(month, year);
+      const now = /* @__PURE__ */ new Date();
+      setMonth(now.getMonth());
+      setYear(now.getFullYear());
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -444,7 +479,20 @@ function BookingWidget({
     return () => {
       document.body.style.overflow = "";
     };
+  }, [isOpen]);
+  (0, import_react3.useEffect)(() => {
+    if (isOpen) {
+      fetchAvailability(month, year);
+    }
   }, [isOpen, month, year, fetchAvailability]);
+  (0, import_react3.useEffect)(() => {
+    if (!isOpen) return;
+    function onKeyDown(e) {
+      if (e.key === "Escape") handleClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
   function handleChangeMonth(m, y) {
     setMonth(m);
     setYear(y);
@@ -495,13 +543,15 @@ function BookingWidget({
     }
   }
   function handleClose() {
-    setIsOpen(false);
+    setIsClosing(true);
     setTimeout(() => {
+      setIsOpen(false);
+      setIsClosing(false);
       setStep("calendar");
       setSelectedDate(null);
       setSelectedTime(null);
       setErrorMsg("");
-    }, 300);
+    }, 200);
   }
   function handleReset() {
     setStep("calendar");
@@ -550,7 +600,7 @@ function BookingWidget({
           justifyContent: "center",
           zIndex: 9999,
           padding: 16,
-          animation: "techode-booking-fade-in 0.2s ease"
+          animation: isClosing ? "techode-booking-fade-out 0.2s ease forwards" : "techode-booking-fade-in 0.2s ease"
         },
         children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
           "div",
@@ -566,7 +616,7 @@ function BookingWidget({
               border: `1px solid ${isDark ? "#1a1a2e" : "#e0e0e0"}`,
               padding: 24,
               fontFamily: "Inter, system-ui, sans-serif",
-              animation: "techode-booking-slide-up 0.3s ease"
+              animation: isClosing ? "techode-booking-slide-down 0.2s ease forwards" : "techode-booking-slide-up 0.3s ease"
             },
             children: [
               /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }, children: [
@@ -603,7 +653,10 @@ function BookingWidget({
                 ": ",
                 durationLabel
               ] }),
-              step === "calendar" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_jsx_runtime4.Fragment, { children: loadingAvailability ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { textAlign: "center", padding: "40px 0", color: isDark ? "#8888AA" : "#999" }, children: t.loading }) : availability.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { textAlign: "center", padding: "40px 0", color: isDark ? "#8888AA" : "#999" }, children: t.noSlots }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
+              step === "calendar" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_jsx_runtime4.Fragment, { children: loadingAvailability ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { textAlign: "center" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Spinner, { color: accentColor }),
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { style: { color: isDark ? "#8888AA" : "#999", fontSize: 14, margin: 0 }, children: t.loading })
+              ] }) : availability.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { textAlign: "center", padding: "40px 0", color: isDark ? "#8888AA" : "#999" }, children: t.noSlots }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
                   CalendarGrid,
                   {
@@ -660,9 +713,10 @@ function BookingWidget({
                   fontSize: 14,
                   marginBottom: 8
                 }, children: [
-                  selectedDate,
+                  selectedDate ? formatReadableDate(selectedDate, locale) : selectedDate,
                   " \u2014 ",
-                  selectedTime
+                  selectedTime,
+                  " hrs"
                 ] }),
                 errorMsg && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { padding: "8px 12px", borderRadius: 8, background: "#ff444420", color: "#ff6666", fontSize: 13, marginBottom: 8 }, children: errorMsg }),
                 /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
@@ -750,9 +804,20 @@ function BookingWidget({
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes techode-booking-fade-out {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
         @keyframes techode-booking-slide-up {
           from { opacity: 0; transform: translateY(20px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes techode-booking-slide-down {
+          from { opacity: 1; transform: translateY(0) scale(1); }
+          to { opacity: 0; transform: translateY(20px) scale(0.98); }
+        }
+        @keyframes techode-booking-spin {
+          to { transform: rotate(360deg); }
         }
       ` })
   ] });
