@@ -36,10 +36,10 @@ export interface BookingFormData {
 }
 
 export interface BookingHandlerOptions {
-  /** Google Calendar ID (usually the gmail address) */
-  googleCalendarId: string;
-  /** Google Service Account credentials JSON string (or base64) */
-  googleCredentials: string;
+  /** Google Calendar ID (usually the gmail address). Optional — if omitted, email-only mode. */
+  googleCalendarId?: string;
+  /** Google Service Account credentials JSON string (or base64). Optional — if omitted, email-only mode. */
+  googleCredentials?: string;
   /** Resend API key for confirmation emails */
   resendApiKey: string;
   /** Email to notify on new bookings */

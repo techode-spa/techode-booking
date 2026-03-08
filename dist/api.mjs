@@ -231,6 +231,27 @@ function validate(body) {
     time: trimTime
   };
 }
+function getLocalAvailability(month, year, availableDays, availableHours) {
+  const now = /* @__PURE__ */ new Date();
+  const endDate = new Date(year, month + 1, 0);
+  const results = [];
+  for (let day = 1; day <= endDate.getDate(); day++) {
+    const date = new Date(year, month, day);
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayOfWeek = date.getDay();
+    if (!availableDays.includes(dayOfWeek)) continue;
+    if (date < new Date(now.getFullYear(), now.getMonth(), now.getDate())) continue;
+    const slots = [];
+    for (let hour = availableHours.start; hour < availableHours.end; hour++) {
+      const slotStart = new Date(year, month, day, hour, 0);
+      slots.push({ hour, minute: 0, available: slotStart > now });
+    }
+    if (slots.some((s) => s.available)) {
+      results.push({ date: dateStr, slots });
+    }
+  }
+  return results;
+}
 function createBookingHandler(options) {
   const {
     googleCalendarId,
@@ -244,7 +265,8 @@ function createBookingHandler(options) {
     bufferMinutes = 15,
     rateLimit = 5
   } = options;
-  const calendarConfig = {
+  const useGoogleCalendar = !!(googleCalendarId && googleCredentials);
+  const calendarConfig = useGoogleCalendar ? {
     calendarId: googleCalendarId,
     credentials: googleCredentials,
     timezone,
@@ -252,7 +274,7 @@ function createBookingHandler(options) {
     availableHours,
     duration,
     bufferMinutes
-  };
+  } : null;
   return async (req) => {
     if (req.action === "availability") {
       const { month, year } = req.body;
@@ -260,7 +282,7 @@ function createBookingHandler(options) {
       const m = typeof month === "number" ? month : now.getMonth();
       const y = typeof year === "number" ? year : now.getFullYear();
       try {
-        const availability = await getAvailability(calendarConfig, m, y);
+        const availability = useGoogleCalendar && calendarConfig ? await getAvailability(calendarConfig, m, y) : getLocalAvailability(m, y, availableDays, availableHours);
         return { status: 200, body: { availability } };
       } catch (err) {
         console.error("Calendar availability error:", err);
@@ -277,12 +299,14 @@ function createBookingHandler(options) {
       }
       const data = result;
       try {
-        await createEvent(calendarConfig, data.date, data.time, {
-          name: data.name,
-          email: data.email,
-          service: data.service,
-          message: data.message
-        });
+        if (useGoogleCalendar && calendarConfig) {
+          await createEvent(calendarConfig, data.date, data.time, {
+            name: data.name,
+            email: data.email,
+            service: data.service,
+            message: data.message
+          });
+        }
         const userEmail = buildUserEmail({
           name: data.name,
           date: data.date,

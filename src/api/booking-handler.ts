@@ -1,4 +1,4 @@
-import type { BookingHandlerOptions, BookingResponse, BookingFormData } from "../types";
+import type { BookingHandlerOptions, BookingResponse, BookingFormData, DayAvailability, TimeSlot } from "../types";
 import { getAvailability, createEvent } from "./calendar";
 import { checkRateLimit } from "./rate-limiter";
 import { buildUserEmail, buildNotifyEmail, sendEmail } from "./email";
@@ -42,6 +42,39 @@ function validate(body: Record<string, unknown>): BookingFormData | string {
   };
 }
 
+/** Generate availability locally without Google Calendar */
+function getLocalAvailability(
+  month: number,
+  year: number,
+  availableDays: number[],
+  availableHours: { start: number; end: number }
+): DayAvailability[] {
+  const now = new Date();
+  const endDate = new Date(year, month + 1, 0);
+  const results: DayAvailability[] = [];
+
+  for (let day = 1; day <= endDate.getDate(); day++) {
+    const date = new Date(year, month, day);
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayOfWeek = date.getDay();
+
+    if (!availableDays.includes(dayOfWeek)) continue;
+    if (date < new Date(now.getFullYear(), now.getMonth(), now.getDate())) continue;
+
+    const slots: TimeSlot[] = [];
+    for (let hour = availableHours.start; hour < availableHours.end; hour++) {
+      const slotStart = new Date(year, month, day, hour, 0);
+      slots.push({ hour, minute: 0, available: slotStart > now });
+    }
+
+    if (slots.some((s) => s.available)) {
+      results.push({ date: dateStr, slots });
+    }
+  }
+
+  return results;
+}
+
 export function createBookingHandler(options: BookingHandlerOptions) {
   const {
     googleCalendarId,
@@ -56,15 +89,19 @@ export function createBookingHandler(options: BookingHandlerOptions) {
     rateLimit = 5,
   } = options;
 
-  const calendarConfig = {
-    calendarId: googleCalendarId,
-    credentials: googleCredentials,
-    timezone,
-    availableDays,
-    availableHours,
-    duration,
-    bufferMinutes,
-  };
+  const useGoogleCalendar = !!(googleCalendarId && googleCredentials);
+
+  const calendarConfig = useGoogleCalendar
+    ? {
+        calendarId: googleCalendarId!,
+        credentials: googleCredentials!,
+        timezone,
+        availableDays,
+        availableHours,
+        duration,
+        bufferMinutes,
+      }
+    : null;
 
   return async (req: {
     action: "availability" | "book";
@@ -79,7 +116,9 @@ export function createBookingHandler(options: BookingHandlerOptions) {
       const y = typeof year === "number" ? year : now.getFullYear();
 
       try {
-        const availability = await getAvailability(calendarConfig, m, y);
+        const availability = useGoogleCalendar && calendarConfig
+          ? await getAvailability(calendarConfig, m, y)
+          : getLocalAvailability(m, y, availableDays, availableHours);
         return { status: 200, body: { availability } };
       } catch (err) {
         console.error("Calendar availability error:", err);
@@ -89,12 +128,10 @@ export function createBookingHandler(options: BookingHandlerOptions) {
 
     // --- BOOK APPOINTMENT ---
     if (req.action === "book") {
-      // Rate limit
       if (!checkRateLimit(req.ip, rateLimit)) {
         return { status: 429, body: { error: "Demasiadas solicitudes. Intenta mas tarde." } };
       }
 
-      // Validate
       const result = validate(req.body);
       if (typeof result === "string") {
         return { status: 400, body: { error: result } };
@@ -103,13 +140,15 @@ export function createBookingHandler(options: BookingHandlerOptions) {
       const data = result;
 
       try {
-        // Create Google Calendar event
-        await createEvent(calendarConfig, data.date, data.time, {
-          name: data.name,
-          email: data.email,
-          service: data.service,
-          message: data.message,
-        });
+        // Create Google Calendar event (if configured)
+        if (useGoogleCalendar && calendarConfig) {
+          await createEvent(calendarConfig, data.date, data.time, {
+            name: data.name,
+            email: data.email,
+            service: data.service,
+            message: data.message,
+          });
+        }
 
         // Send confirmation email to user
         const userEmail = buildUserEmail({
